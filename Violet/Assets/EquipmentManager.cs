@@ -17,8 +17,9 @@ public class EquipmentManager : MonoBehaviour
     public delegate void OnEquipmentChanged(Equipment newItem, Equipment oldItem);
     public OnEquipmentChanged onEquipmentChanged;
 
-
+    public SkinnedMeshRenderer targetMesh;
     Equipment[] currentEquipment;
+    SkinnedMeshRenderer[] currentMeshes; // Here are meshes for our equipment
 
     Inventory inventory;
 
@@ -29,6 +30,7 @@ public class EquipmentManager : MonoBehaviour
         // System.Enum.GetNames(typeof(EquipmentSlot)) - this is an array (enum?) of all te equipment slots
         int numSlots = System.Enum.GetNames(typeof(EquipmentSlot)).Length;
         currentEquipment = new Equipment[numSlots];
+        currentMeshes = new SkinnedMeshRenderer[numSlots];
 
     }
 
@@ -50,14 +52,28 @@ public class EquipmentManager : MonoBehaviour
             onEquipmentChanged.Invoke(newItem, oldItem);
         }
 
+        SetEquipmentBlendShapes(newItem, 100);
+
         currentEquipment[slotIndex] = newItem;
+        SkinnedMeshRenderer newMesh = Instantiate<SkinnedMeshRenderer>(newItem.mesh);
+        newMesh.transform.parent = targetMesh.transform;
+
+        newMesh.bones = targetMesh.bones;
+        newMesh.rootBone = targetMesh.rootBone;
+        currentMeshes[slotIndex] = newMesh;
     }
 
     public void Unequip(int slotIndex)
     {
         if(currentEquipment[slotIndex] != null)
         {
+            if(currentMeshes[slotIndex] != null)
+            {
+                Destroy(currentMeshes[slotIndex].gameObject);
+            }
+            
             Equipment oldItem = currentEquipment[slotIndex];
+            SetEquipmentBlendShapes(oldItem, 0);
             inventory.Add(oldItem);
 
             currentEquipment[slotIndex] = null;
@@ -75,6 +91,14 @@ public class EquipmentManager : MonoBehaviour
         for(int i = 0; i < currentEquipment.Length; i++)
         {
             Unequip(i);
+        }
+    }
+
+    void SetEquipmentBlendShapes(Equipment item, int weight)
+    {
+        foreach(EquipmentMeshRegion blendShape in item.coveredMeshRegions)
+        {
+            targetMesh.SetBlendShapeWeight((int)blendShape, weight);
         }
     }
 
